@@ -73,23 +73,25 @@ class KeycloakGuard implements Guard
         }
 
         if ($this->config['load_user_from_database']) {
-            $methodOnProvider = $this->config['user_provider_custom_retrieve_method'] ?? null;
-            if ($methodOnProvider) {
-                $user = $this->provider->{$methodOnProvider}($this->decodedToken, $credentials);
+            // check has the client the user role
+            if ($this->hasRole("user")) {
+                $methodOnProvider = $this->config['user_provider_custom_retrieve_method'] ?? null;
+                if ($methodOnProvider) {
+                    $user = $this->provider->{$methodOnProvider}($this->decodedToken, $credentials);
+                } else {
+                    $user = $this->provider->retrieveByCredentials($credentials);
+                }
+
+                if (!$user) {
+                    $user = $this->saveUser();
+                }
             } else {
-                $user = $this->provider->retrieveByCredentials($credentials);
+                $class = $this->provider->getModel();
+                $user = new $class();
             }
 
-            if (!$user) {
-                $user = $this->saveUser();
-            }
-        } else {
-            $class = $this->provider->getModel();
-            $user = new $class();
+            $this->keyCloakUser->setUser($user, $this->decodedToken);
         }
-
-        $this->keyCloakUser->setUser($user, $this->decodedToken);
-
         return true;
     }
 
