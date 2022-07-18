@@ -72,9 +72,8 @@ class KeycloakGuard implements Guard
             throw new ResourceAccessNotAllowedException("The decoded JWT token has no a valid access allowed by API. Allowed resources by API: " . $this->config['allowed_resources']);
         }
 
-        if ($this->config['load_user_from_database']) {
-            // check has the client the user role
-            if ($this->hasRole("user")) {
+        // check has the client the user role
+        if ($this->config['load_user_from_database'] && $this->hasRole("user")) {
                 $methodOnProvider = $this->config['user_provider_custom_retrieve_method'] ?? null;
                 if ($methodOnProvider) {
                     $user = $this->provider->{$methodOnProvider}($this->decodedToken, $credentials);
@@ -91,7 +90,7 @@ class KeycloakGuard implements Guard
             }
 
             $this->keyCloakUser->setUser($user, $this->decodedToken);
-        }
+
         return true;
     }
 
