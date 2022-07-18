@@ -232,4 +232,14 @@ class KeycloakGuard implements Guard
     {
         return in_array($role, $this->getRoles(), true);
     }
+
+    public function isClient(): bool
+    {
+        return $this->hasRole('client');
+    }
+
+    public function isUser(): bool
+    {
+        return $this->hasRole('user');
+    }
 }
