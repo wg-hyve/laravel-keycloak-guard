@@ -46,7 +46,7 @@ class KeycloakGuard implements Guard
 
             $this->decodedToken = Token::decode($this->request->bearerToken(), $pubKey, $server);
         } catch (\Exception $e) {
-//            abort(401, "[Keycloak Guard] ".$e->getMessage());
+            abort(401, "[Keycloak Guard] ".$e->getMessage());
         }
 
         if ($this->decodedToken) {
