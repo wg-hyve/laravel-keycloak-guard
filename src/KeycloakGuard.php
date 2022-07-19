@@ -27,6 +27,8 @@ class KeycloakGuard implements Guard
         $this->provider = $provider;
         $this->decodedToken = null;
         $this->request = $request;
+
+        $this->authenticate();
     }
 
     /**
@@ -64,8 +66,6 @@ class KeycloakGuard implements Guard
      */
     public function validate(array $credentials = [])
     {
-        $this->authenticate();
-
         if (!$this->decodedToken) {
             return false;
         }
