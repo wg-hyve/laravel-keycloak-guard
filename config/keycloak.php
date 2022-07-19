@@ -18,4 +18,14 @@ return [
     'realm_address' => env('KEYCLOAK_REALM_ADDRESS', null),
 
     'key_cache_time' => env('KEYCLOAK_KEY_CACHE_TIME', 24),
+
+    'auth_url' => env('KEYCLOAK_AUTH_URL', null),
+
+    'client_id' => env('KEYCLOAK_CLIENT_ID', null),
+
+    'client_secret' => env('KEYCLOAK_CLIENT_SECRET', null),
+
+    'scope' => env('KEYCLOAK_SCOPE', null),
+
+    'grant_type' => env('KEYCLOAK_GRANT_TYPE', null),
 ];
