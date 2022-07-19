@@ -27,6 +27,8 @@ class KeycloakGuard implements Guard
         $this->provider = $provider;
         $this->decodedToken = null;
         $this->request = $request;
+
+        $this->authenticate();
     }
 
     /**
@@ -44,7 +46,7 @@ class KeycloakGuard implements Guard
 
             $this->decodedToken = Token::decode($this->request->bearerToken(), $pubKey, $server);
         } catch (\Exception $e) {
-            abort(401, "[Keycloak Guard] ".$e->getMessage());
+//            abort(401, "[Keycloak Guard] ".$e->getMessage());
         }
 
         if ($this->decodedToken) {
@@ -64,8 +66,6 @@ class KeycloakGuard implements Guard
      */
     public function validate(array $credentials = [])
     {
-        $this->authenticate();
-
         if (!$this->decodedToken) {
             return false;
         }
