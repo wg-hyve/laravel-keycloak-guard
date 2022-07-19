@@ -50,8 +50,10 @@ class KeycloakGuard implements Guard
         }
 
         if ($this->decodedToken) {
+            $decodedToken = json_decode(json_encode($this->decodedToken), true);
+
             $this->validate([
-                $this->config['user_provider_credential'] => $this->decodedToken->{$this->config['token_principal_attribute']}
+                $this->config['user_provider_credential'] => Arr::get($decodedToken, $this->config['token_principal_attribute'])
             ]);
         }
     }
