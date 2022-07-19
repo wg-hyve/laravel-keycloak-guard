@@ -24,23 +24,23 @@ class KeycloakHelper
     private function getKeycloakToken()
     {
         $config = config('keycloak');
-        $response = Http::post($config['auth_url'],
-                    [
-                        'client_id' => $config['client_id'],
-                        'client_secret' => $config['client_secret'],
-                        'scope' => $config['scope'],
-                        'grant_type' => $config['grant_type']
-                    ]
+        $response = Http::asForm()->post($config['auth_url'],
+            [
+                'client_id' => $config['client_id'],
+                'client_secret' => $config['client_secret'],
+                'scope' => $config['scope'],
+                'grant_type' => $config['grant_type']
+            ]
         );
 
         if ($response->ok()) {
             $body = $response->json();
             if (isset($body) && is_array($body) && isset($body['access_token'])) {
-               return  ['token' => $body['access_token'], 'expires_in' => $body['expires_in']];
+                return  ['access_token' => $body['access_token'], 'expires_in' => $body['expires_in']];
             }
 
             throw new InternalErrorException("KEYCLOAK - No access_token found.");
         }
-        throw new InternalErrorException("KEYCLOAK - Couldn't connect to keycloak.");
+        throw new InternalErrorException("KEYCLOAK - ".$response->status()." ".$response->body());
     }
 }
