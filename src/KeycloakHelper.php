@@ -1,6 +1,6 @@
 <?php
 
-namespace KeycloakHelper;
+namespace KeycloakGuard;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\CssSelector\Exception\InternalErrorException;
