@@ -13,11 +13,11 @@ use KeycloakGuard\Exceptions\TokenException;
 
 class KeycloakGuard implements Guard
 {
-    private $config;
-    private $user;
-    private $keyCloakUser;
-    private $provider;
-    private $decodedToken;
+    protected $config;
+    protected $user;
+    protected $keyCloakUser;
+    protected $provider;
+    protected $decodedToken;
 
     public function __construct(UserProvider $provider, Request $request)
     {
@@ -37,7 +37,7 @@ class KeycloakGuard implements Guard
      * @return mixed
      */
 
-    private function authenticate()
+    protected function authenticate()
     {
         try {
             // set key and server
@@ -99,7 +99,7 @@ class KeycloakGuard implements Guard
     /**
      * Validate if authenticated user has a valid resource
      */
-    private function validateResources(): bool
+    protected function validateResources(): bool
     {
         $token_resource_access = array_keys((array)($this->decodedToken->resource_access ?? []));
         $allowed_resources = explode(',', $this->config['allowed_resources']);
@@ -110,7 +110,7 @@ class KeycloakGuard implements Guard
     /**
      * Validate if authenticated user has a valid resource
      */
-    private function validateScopes(): bool
+    protected function validateScopes(): bool
     {
         $token_scopes = explode(' ', $this->decodedToken->scope);
         $allowed_resources = explode(',', $this->config['allowed_resources']);
@@ -118,7 +118,7 @@ class KeycloakGuard implements Guard
         return count(array_intersect($token_scopes, $allowed_resources)) > 0;
     }
 
-    private function saveUser()
+    protected function saveUser()
     {
         if (!empty($this->decodedToken->upn)) {
             return User::create([
