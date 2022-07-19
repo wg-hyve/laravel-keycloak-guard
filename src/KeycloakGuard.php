@@ -120,9 +120,9 @@ class KeycloakGuard implements Guard
 
     private function saveUser()
     {
-        if (!empty($this->decodedToken->preferred_username)) {
+        if (!empty($this->decodedToken->upn)) {
             return User::create([
-                'email' => $this->decodedToken->preferred_username,
+                'email' => $this->decodedToken->upn,
                 'name' => $this->decodedToken->name ?? '',
             ]);
         }
