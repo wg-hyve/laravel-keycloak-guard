@@ -52,6 +52,10 @@ class KeycloakGuard implements Guard
         if ($this->decodedToken) {
             $decodedToken = json_decode(json_encode($this->decodedToken), true);
 
+            if (!$this->hasRole($this->config['service_role'])) {
+                abort(403, 'Keycloak - No access for this service-');
+            }
+
             $this->validate([
                 $this->config['user_provider_credential'] => Arr::get($decodedToken, $this->config['token_principal_attribute'])
             ]);
@@ -68,10 +72,6 @@ class KeycloakGuard implements Guard
     {
         if (!$this->decodedToken) {
             return false;
-        }
-
-        if ($this->validateResources() === false && $this->validateScopes() === false) {
-            throw new ResourceAccessNotAllowedException("The decoded JWT token has no a valid access allowed by API. Allowed resources by API: " . $this->config['allowed_resources']);
         }
 
         // check has the client the user role
@@ -94,28 +94,6 @@ class KeycloakGuard implements Guard
             $this->keyCloakUser->setUser($user, $this->decodedToken);
 
         return true;
-    }
-
-    /**
-     * Validate if authenticated user has a valid resource
-     */
-    protected function validateResources(): bool
-    {
-        $token_resource_access = array_keys((array)($this->decodedToken->resource_access ?? []));
-        $allowed_resources = explode(',', $this->config['allowed_resources']);
-
-        return count(array_intersect($token_resource_access, $allowed_resources)) > 0;
-    }
-
-    /**
-     * Validate if authenticated user has a valid resource
-     */
-    protected function validateScopes(): bool
-    {
-        $token_scopes = explode(' ', $this->decodedToken->scope);
-        $allowed_resources = explode(',', $this->config['allowed_resources']);
-
-        return count(array_intersect($token_scopes, $allowed_resources)) > 0;
     }
 
     protected function saveUser()
