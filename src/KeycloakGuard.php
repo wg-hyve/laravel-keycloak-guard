@@ -150,11 +150,11 @@ class KeycloakGuard implements Guard
     /**
      * Returns full decoded JWT token from athenticated user
      *
-     * @return mixed|null
+     * @return array|null
      */
-    public function token()
+    public function token(): ?array
     {
-        return json_encode($this->decodedToken);
+        return json_decode(json_encode($this->decodedToken), true);
     }
 
     /**
