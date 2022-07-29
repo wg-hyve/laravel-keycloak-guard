@@ -53,7 +53,7 @@ class KeycloakGuard implements Guard
             $decodedToken = json_decode(json_encode($this->decodedToken), true);
 
             if (!$this->hasRole($this->config['service_role'])) {
-                abort(403, 'Keycloak - No access for this service-');
+                abort(403, 'Keycloak - No access for this service.');
             }
 
             $this->validate([
