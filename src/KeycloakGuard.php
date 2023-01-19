@@ -220,4 +220,23 @@ class KeycloakGuard implements Guard
 
         return false;
     }
+
+    public function scopes(): array
+    {
+        $scopes = $this->decodedToken->scope ?? null;
+
+        if($scopes) {
+            return explode(' ', $scopes);
+        }
+
+        return [];
+    }
+
+    public function hasScope(string|array $scope): bool
+    {
+        return count(array_intersect(
+            $this->scopes(),
+            is_string($scope) ? [$scope] : $scope
+        )) > 0;
+    }
 }
