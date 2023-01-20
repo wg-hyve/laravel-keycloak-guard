@@ -40,7 +40,7 @@ class KeycloakGuard implements Guard
         try {
             $this->decodedToken = Token::decode($this->getTokenForRequest(), $this->config['realm_public_key'], $this->config['leeway']);
         } catch (\Exception $e) {
-            throw new TokenException($e->getMessage());
+            abort(401, $e->getMessage());
         }
 
         if ($this->decodedToken) {
