@@ -2,28 +2,27 @@
 
 namespace KeycloakGuard;
 
-use App\Models\User;
-use Illuminate\Support\Arr;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use KeycloakGuard\Exceptions\ResourceAccessNotAllowedException;
 use KeycloakGuard\Exceptions\TokenException;
+use KeycloakGuard\Exceptions\UserNotFoundException;
 
 class KeycloakGuard implements Guard
 {
-    protected $config;
-    protected $user;
-    protected $keyCloakUser;
-    protected $provider;
-    protected $decodedToken;
+    private $config;
+    private $user;
+    private $provider;
+    private $decodedToken;
+    private Request $request;
 
     public function __construct(UserProvider $provider, Request $request)
     {
         $this->config = config('keycloak');
         $this->user = null;
-        $this->keyCloakUser = new KeyCloakUser();
         $this->provider = $provider;
         $this->decodedToken = null;
         $this->request = $request;
@@ -36,85 +35,41 @@ class KeycloakGuard implements Guard
      *
      * @return mixed
      */
-
-    protected function authenticate()
+    private function authenticate()
     {
         try {
-            // set key and server
-            $pubKey = !empty($this->config['realm_public_key']) ? $this->config['realm_public_key'] : '';
-            $server = !empty($this->config['realm_address']) ? $this->config['realm_address'] : '';
-
-            $this->decodedToken = Token::decode($this->request->bearerToken(), $pubKey, $server);
+            $this->decodedToken = Token::decode($this->getTokenForRequest(), $this->config['realm_public_key'], $this->config['leeway']);
         } catch (\Exception $e) {
-            abort(401, "[Keycloak Guard] ".$e->getMessage());
+            abort(401, $e->getMessage());
         }
 
         if ($this->decodedToken) {
-            $decodedToken = json_decode(json_encode($this->decodedToken), true);
-
-            if (!$this->hasRole($this->config['service_role'])) {
-                abort(403, 'Keycloak - No access for this service.');
-            }
-
             $this->validate([
-                $this->config['user_provider_credential'] => Arr::get($decodedToken, $this->config['token_principal_attribute'])
+                $this->config['user_provider_credential'] => $this->decodedToken->{$this->config['token_principal_attribute']}
             ]);
         }
     }
 
     /**
-     * Validate a user's credentials.
+     * Get the token for the current request.
      *
-     * @param array $credentials
+     * @return string
+     */
+    public function getTokenForRequest()
+    {
+        $inputKey = $this->config['input_key'] ?? "";
+
+        return $this->request->bearerToken() ?? $this->request->input($inputKey);
+    }
+
+    /**
+     * Determine if the current user is authenticated.
+     *
      * @return bool
      */
-    public function validate(array $credentials = [])
+    public function check()
     {
-        if (!$this->decodedToken) {
-            return false;
-        }
-
-        // check has the client the user role
-        if ($this->config['load_user_from_database'] && $this->hasRole("user")) {
-                $methodOnProvider = $this->config['user_provider_custom_retrieve_method'] ?? null;
-                if ($methodOnProvider) {
-                    $user = $this->provider->{$methodOnProvider}($this->decodedToken, $credentials);
-                } else {
-                    $user = $this->provider->retrieveByCredentials($credentials);
-                }
-
-                if (!$user) {
-                    $user = $this->saveUser();
-                }
-            } else {
-                $class = $this->provider->getModel();
-                $user = new $class();
-            }
-
-            $this->keyCloakUser->setUser($user, $this->decodedToken);
-
-        return true;
-    }
-
-    protected function saveUser()
-    {
-        if (!empty($this->decodedToken->upn)) {
-            return User::create([
-                'email' => $this->decodedToken->upn,
-                'name' => $this->decodedToken->name ?? '',
-            ]);
-        }
-    }
-
-    /**
-     * Set the current user.
-     *
-     * @param \Illuminate\Contracts\Auth\Authenticatable $user
-     * @return void
-     */
-    public function setUser(Authenticatable $user)
-    {
-        $this->keyCloakUser->setUser($user, $this->decodedToken);
+        return !is_null($this->user());
     }
 
     /**
@@ -124,7 +79,7 @@ class KeycloakGuard implements Guard
      */
     public function hasUser()
     {
-        return !is_null($this->keyCloakUser->get());
+        return !is_null($this->user());
     }
 
     /**
@@ -138,23 +93,32 @@ class KeycloakGuard implements Guard
     }
 
     /**
-     * Determine if the current user is authenticated.
+     * Set the current user.
      *
-     * @return bool
+     * @param  \Illuminate\Contracts\Auth\Authenticatable  $user
+     * @return void
      */
-    public function check()
+    public function setUser(Authenticatable $user)
     {
-        return !is_null($this->keyCloakUser->get());
+        $this->user = $user;
     }
 
     /**
-     * Returns full decoded JWT token from athenticated user
+     * Get the currently authenticated user.
      *
-     * @return array|null
+     * @return \Illuminate\Contracts\Auth\Authenticatable|null
      */
-    public function token(): ?array
+    public function user()
     {
-        return json_decode(json_encode($this->decodedToken), true);
+        if (is_null($this->user)) {
+            return null;
+        }
+
+        if ($this->config['append_decoded_token']) {
+            $this->user->token = $this->decodedToken;
+        }
+
+        return $this->user;
     }
 
     /**
@@ -164,62 +128,115 @@ class KeycloakGuard implements Guard
      */
     public function id()
     {
-        return $this->keyCloakUser->id();
-    }
-
-    public function user()
-    {
-        return $this->keyCloakUser->get();
-    }
-
-    public function getSubject(): ?string
-    {
-        return $this->decodedToken->sub ?? null;
-    }
-
-    public function getScopes(): array
-    {
-        if (empty($this->decodedToken->scope)) {
-            return [];
+        if ($user = $this->user()) {
+            return $this->user()->id;
         }
-        return explode(" ", $this->decodedToken->scope);
     }
 
-    public function getRoles(): array
+    /**
+     * Returns full decoded JWT token from athenticated user
+     *
+     * @return mixed|null
+     */
+    public function token()
     {
-        if (empty($this->decodedToken->realm_access->roles)) {
-            return [];
+        return json_encode($this->decodedToken);
+    }
+
+    /**
+     * Validate a user's credentials.
+     *
+     * @param  array  $credentials
+     * @return bool
+     */
+    public function validate(array $credentials = [])
+    {
+        $this->validateResources();
+
+        if ($this->config['load_user_from_database']) {
+            $methodOnProvider = $this->config['user_provider_custom_retrieve_method'] ?? null;
+
+            if ($methodOnProvider) {
+                $user = $this->provider->{$methodOnProvider}($this->decodedToken, $credentials);
+            } else {
+                $user = $this->provider->retrieveByCredentials($credentials);
+            }
+
+            if (!$user) {
+                throw new UserNotFoundException("User not found. Credentials: ".json_encode($credentials));
+            }
+        } else {
+            $class = $this->provider->getModel();
+            $user = new $class();
         }
 
-        return $this->decodedToken->realm_access->roles;
+        $this->setUser($user);
+
+        return true;
     }
 
-    public function getResourceAccess(): array
+    /**
+     * Validate if authenticated user has a valid resource
+     *
+     * @return void
+     */
+    private function validateResources()
     {
-        if (empty($this->decodedToken->resource_access)) {
-            return [];
+        if ($this->config['ignore_resources_validation']) {
+            return;
         }
 
-        return get_object_vars($this->decodedToken->resource_access);
+        $client_name = $this->decodedToken->{$this->config['token_principal_attribute']};
+        $token_resource_access = Arr::get(
+            (array) ($this->decodedToken->resource_access->{$client_name} ?? []),
+            'roles'
+        );
+
+        $allowed_resources = explode(',', $this->config['allowed_resources']);
+
+        if (count(array_intersect($token_resource_access, $allowed_resources)) == 0) {
+            throw new ResourceAccessNotAllowedException("The decoded JWT token has not a valid `resource_access` allowed by API. Allowed resources by API: ".$this->config['allowed_resources']);
+        }
     }
 
-    public function hasScope(string $scope): bool
+    /**
+     * Check if authenticated user has a especific role into resource
+     * @param string $resource
+     * @param string $role
+     * @return bool
+     */
+    public function hasRole($resource, $role)
     {
-        return in_array($scope, $this->getScopes(), true);
+        $token_resource_access = (array)$this->decodedToken->resource_access;
+
+        if (array_key_exists($resource, $token_resource_access)) {
+            $token_resource_values = (array)$token_resource_access[$resource];
+
+            if (array_key_exists('roles', $token_resource_values) &&
+                in_array($role, $token_resource_values['roles'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    public function hasRole(string $role): bool
+    public function scopes(): array
     {
-        return in_array($role, $this->getRoles(), true);
+        $scopes = $this->decodedToken->scope ?? null;
+
+        if($scopes) {
+            return explode(' ', $scopes);
+        }
+
+        return [];
     }
 
-    public function isClient(): bool
+    public function hasScope(string|array $scope): bool
     {
-        return $this->hasRole('client');
-    }
-
-    public function isUser(): bool
-    {
-        return $this->hasRole('user');
+        return count(array_intersect(
+            $this->scopes(),
+            is_string($scope) ? [$scope] : $scope
+        )) > 0;
     }
 }
