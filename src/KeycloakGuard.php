@@ -205,7 +205,7 @@ class KeycloakGuard implements Guard
      * @param string $role
      * @return bool
      */
-    public function hasRole(array $resource, string $role)
+    public function hasRole(array $resource, string $role): bool
     {
         $token_resource_access = (array)$this->decodedToken->resource_access;
 
