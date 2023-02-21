@@ -38,7 +38,12 @@ class KeycloakGuard implements Guard
     private function authenticate()
     {
         try {
-            $this->decodedToken = Token::decode($this->getTokenForRequest(), $this->config['realm_public_key'], $this->config['leeway']);
+            $this->decodedToken = Token::decode(
+                $this->getTokenForRequest(),
+                $this->config['realm_public_key'],
+                $this->config['realm_address'] ?? '',
+                $this->config['leeway'] ?? 0,
+            );
         } catch (\Exception $e) {
             abort(401, $e->getMessage());
         }
@@ -205,7 +210,7 @@ class KeycloakGuard implements Guard
      * @param string $role
      * @return bool
      */
-    public function hasRole($resource, $role)
+    public function hasRole(array $resource, string $role): bool
     {
         $token_resource_access = (array)$this->decodedToken->resource_access;
 

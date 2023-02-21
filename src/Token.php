@@ -17,8 +17,10 @@ class Token
      * @param string $keyCloakServer
      * @return mixed|null
      */
-    public static function decode(string $token = null, string $publicKey = '', string $keyCloakServer = '')
+    public static function decode(string $token = null, string $publicKey = '', string $keyCloakServer = '', int $leeway = 0)
     {
+        JWT::$leeway = $leeway;
+
         return $token ? JWT::decode(
             $token,
             new Key(self::loadPublicKey($publicKey, $keyCloakServer), 'RS256')
