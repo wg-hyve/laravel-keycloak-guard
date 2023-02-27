@@ -226,6 +226,42 @@ class KeycloakGuard implements Guard
         return false;
     }
 
+    public function getAllRules(): array
+    {
+        return array_merge($this->getRealmAccess(), $this->getRoles(), $this->getResourceAccess(), $this->scopes());
+    }
+
+    public function getRoles(): array
+    {
+        $name = $this->getClientName();
+
+        if (empty($this->decodedToken->{$name}->roles)) {
+            return [];
+        }
+
+        return $this->decodedToken->{$name}->roles;
+    }
+
+    public function getResourceAccess(): array
+    {
+        $name = $this->getClientName();
+
+        if (empty($this->decodedToken->resource_acces->{$name}->roles)) {
+            return [];
+        }
+
+        return $this->decodedToken->resource_acces->{$name}->roles;
+    }
+
+    public function getRealmAccess(): array
+    {
+        if (empty($this->decodedToken->realm_access->roles)) {
+            return [];
+        }
+
+        return $this->decodedToken->realm_access->roles;
+    }
+
     public function scopes(): array
     {
         $scopes = $this->decodedToken->scope ?? null;
@@ -243,5 +279,10 @@ class KeycloakGuard implements Guard
             $this->scopes(),
             is_string($scope) ? [$scope] : $scope
         )) > 0;
+    }
+
+    private function getClientName(): string|null
+    {
+        return $this->decodedToken->aud ?? null;
     }
 }
