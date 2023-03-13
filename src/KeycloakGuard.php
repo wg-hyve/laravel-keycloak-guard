@@ -140,9 +140,9 @@ class KeycloakGuard implements Guard
     }
 
     /**
-     * Returns full decoded JWT token from athenticated user
+     * Returns full decoded JWT token from authenticated user
      *
-     * @return mixed|null
+     * @return stdClass|null
      */
     public function token(): ?stdClass
     {
