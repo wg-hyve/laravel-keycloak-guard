@@ -6,6 +6,7 @@ use Firebase\JWT\Key;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use KeycloakGuard\Exceptions\TokenException;
+use stdClass;
 
 class Token
 {
@@ -15,9 +16,10 @@ class Token
      * @param string|null $token
      * @param string $publicKey
      * @param string $keyCloakServer
-     * @return mixed|null
+     * @param int $leeway
+     * @return stdClass|null
      */
-    public static function decode(string $token = null, string $publicKey = '', string $keyCloakServer = '', int $leeway = 0)
+    public static function decode(string $token = null, string $publicKey = '', string $keyCloakServer = '', int $leeway = 0): ?stdClass
     {
         JWT::$leeway = $leeway;
 

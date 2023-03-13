@@ -10,6 +10,7 @@ use Illuminate\Support\Arr;
 use KeycloakGuard\Exceptions\ResourceAccessNotAllowedException;
 use KeycloakGuard\Exceptions\TokenException;
 use KeycloakGuard\Exceptions\UserNotFoundException;
+use stdClass;
 
 class KeycloakGuard implements Guard
 {
@@ -143,9 +144,9 @@ class KeycloakGuard implements Guard
      *
      * @return mixed|null
      */
-    public function token()
+    public function token(): ?stdClass
     {
-        return json_encode($this->decodedToken);
+        return $this->decodedToken;
     }
 
     /**
