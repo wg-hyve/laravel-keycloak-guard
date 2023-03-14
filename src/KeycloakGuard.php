@@ -205,13 +205,32 @@ class KeycloakGuard implements Guard
         }
     }
 
+    public function roles(bool $useGlobal = true): array
+    {
+        $global_roles = [];
+        $client_name = $this->decodedToken->{$this->config['token_principal_attribute']};
+        $client_roles = $this->decodedToken?->resource_access?->{$client_name}?->roles ?? [];
+
+        if($useGlobal) {
+            $global_roles = $this->decodedToken?->realm_access?->roles ?? [];
+        }
+
+//        $global_roles = $useGlobal === true ? $this->decodedToken?->realm_access?->roles ?? [] : [];
+
+        return array_unique(
+            array_merge(
+                $global_roles,
+                $client_roles
+            )
+        );
+    }
+
     /**
      * Check if authenticated user has a especific role into resource
-     * @param string $resource
      * @param string $role
      * @return bool
      */
-    public function hasRole(array $resource, string $role): bool
+    public function hasRole(string $role): bool
     {
         $token_resource_access = (array)$this->decodedToken->resource_access;
 
