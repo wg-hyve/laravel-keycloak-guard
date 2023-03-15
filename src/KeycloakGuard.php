@@ -188,7 +188,7 @@ class KeycloakGuard implements Guard
      */
     private function validateResources()
     {
-        if ($this->config['ignore_resources_validation'] ?? null) {
+        if ($this->config['ignore_resources_validation']) {
             return;
         }
 

@@ -11,6 +11,8 @@ return [
 
     'token_principal_attribute' => env('KEYCLOAK_TOKEN_PRINCIPAL_ATTRIBUTE', 'sub'),
 
+    'ignore_resources_validation' => filter_var(env('KEYCLOAK_IGNORE_RESOURCE_VALIDATION', false), FILTER_VALIDATE_BOOLEAN),
+
     'append_decoded_token' => env('KEYCLOAK_APPEND_DECODED_TOKEN', false),
 
     'allowed_resources' => env('KEYCLOAK_ALLOWED_RESOURCES', null),
