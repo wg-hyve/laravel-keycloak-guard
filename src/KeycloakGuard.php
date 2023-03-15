@@ -63,9 +63,9 @@ class KeycloakGuard implements Guard
      */
     public function getTokenForRequest()
     {
-        $inputKey = $this->config['input_key'] ?? "";
+        $inputKey = $this->config['input_key'] ?? '';
 
-        return $this->request->bearerToken() ?? $this->request->input($inputKey);
+        return $this->request->bearerToken() ?? $this->request->input($inputKey) ?? Arr::get(getallheaders(), 'Authorization');
     }
 
     /**
@@ -291,6 +291,6 @@ class KeycloakGuard implements Guard
 
     private function getClientName(): string|null
     {
-        return $this->decodedToken->aud ?? null;
+        return $this->decodedToken->aud ?? $this->decodedToken->azp ?? null;
     }
 }
