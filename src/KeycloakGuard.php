@@ -50,9 +50,9 @@ class KeycloakGuard implements Guard
         }
 
         if ($this->decodedToken) {
-            $this->validate([
-                $this->config['user_provider_credential'] => $this->decodedToken->{$this->config['token_principal_attribute']}
-            ]);
+            $this->validate(
+                [$this->config['user_provider_credential'] => $this->decodedToken->{$this->config['token_principal_attribute']}]
+            );
         }
     }
 
@@ -188,19 +188,13 @@ class KeycloakGuard implements Guard
      */
     private function validateResources()
     {
-        if ($this->config['ignore_resources_validation']) {
+        if ($this->config['ignore_resources_validation'] ?? null) {
             return;
         }
 
-        $client_name = $this->decodedToken->{$this->config['token_principal_attribute']};
-        $token_resource_access = Arr::get(
-            (array) ($this->decodedToken->resource_access->{$client_name} ?? []),
-            'roles'
-        );
-
         $allowed_resources = explode(',', $this->config['allowed_resources']);
 
-        if (count(array_intersect($token_resource_access, $allowed_resources)) == 0) {
+        if (count(array_intersect($this->roles(), $allowed_resources)) == 0) {
             throw new ResourceAccessNotAllowedException("The decoded JWT token has not a valid `resource_access` allowed by API. Allowed resources by API: ".$this->config['allowed_resources']);
         }
     }
@@ -290,9 +284,9 @@ class KeycloakGuard implements Guard
     public function hasScope(string|array $scope): bool
     {
         return count(array_intersect(
-            $this->scopes(),
-            is_string($scope) ? [$scope] : $scope
-        )) > 0;
+                         $this->scopes(),
+                         is_string($scope) ? [$scope] : $scope
+                     )) > 0;
     }
 
     private function getClientName(): string|null
