@@ -38,10 +38,15 @@ class KeycloakGuard implements Guard
      */
     private function authenticate()
     {
+        // check we have a pub key or realm address
+        if (empty($this->config['realm_public_key']) && empty($this->config['realm_address'])) {
+            abrout(404, "No public key found");
+        }
+
         try {
             $this->decodedToken = Token::decode(
                 $this->getTokenForRequest(),
-                $this->config['realm_public_key'],
+                $this->config['realm_public_key'] ?? '',
                 $this->config['realm_address'] ?? '',
                 $this->config['leeway'] ?? 0,
             );
