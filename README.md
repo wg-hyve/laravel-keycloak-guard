@@ -102,11 +102,27 @@ return [
 
   'user_provider_credential' => env('KEYCLOAK_USER_PROVIDER_CREDENTIAL', 'username'),
 
-  'token_principal_attribute' => env('KEYCLOAK_TOKEN_PRINCIPAL_ATTRIBUTE', 'preferred_username'),
+  'token_principal_attribute' => env('KEYCLOAK_TOKEN_PRINCIPAL_ATTRIBUTE', 'sub'),
 
   'append_decoded_token' => env('KEYCLOAK_APPEND_DECODED_TOKEN', false),
 
-  'allowed_resources' => env('KEYCLOAK_ALLOWED_RESOURCES', null)
+  'allowed_resources' => env('KEYCLOAK_ALLOWED_RESOURCES', null),
+  
+   'service_role' => env('KEYCLOAK_SERVICE_ROLE', ''),
+  
+  'realm_address' => env('KEYCLOAK_REALM_ADDRESS', null),
+
+   'key_cache_time' => env('KEYCLOAK_KEY_CACHE_TIME', 24),
+   
+    'auth_url' => env('KEYCLOAK_AUTH_URL', null),
+
+    'client_id' => env('KEYCLOAK_CLIENT_ID', null),
+
+    'client_secret' => env('KEYCLOAK_CLIENT_SECRET', null),
+
+    'scope' => env('KEYCLOAK_SCOPE', null),
+
+    'grant_type' => env('KEYCLOAK_GRANT_TYPE', null),
 ];
 
 ```
@@ -232,35 +248,15 @@ Simple Keycloak Guard implements `Illuminate\Contracts\Auth\Guard`. So, all Lara
 
 ### Keycloak Guard methods:
 
-- token()
-
-Ex: `Auth::token()` returns full decoded JWT token from authenticated user
-
-- hasRole('some-resource', 'some-role'):  Check if the authenticated user has especific role into a resource.
-
-Ex:
-Whit this payload:
-
 ```
-'resource_access' => [
-  'myapp-backend' => [
-      'roles' => [
-        'myapp-backend-role1',
-        'myapp-backend-role2'
-      ]
-  ],
-  'myapp-frontend' => [
-    'roles' => [
-      'myapp-frontend-role1',
-      'myapp-frontend-role2'
-    ]
-  ]
-]
-```
-```
-Auth::hasRole('myapp-backend', 'myapp-backend-role1') // true
-Auth::hasRole('myapp-frontend', 'myapp-frontend-role1') // true
-Auth::hasRole('myapp-backend', 'myapp-frontend-role1') // false
+Auth::token(); // get the token
+Auth::hasRole('myapp-backend'); // true | false
+Auth::hasScope('scope'); //true | false
+Auth::getRoles(); // array
+Auth::getScopes(); // array
+Auth::getResourceAccess(); // array
+Auth::isUser(); // true | false
+Auth::isClient(); // true | false
 ```
 
 # Contact
