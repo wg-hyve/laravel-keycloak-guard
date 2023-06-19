@@ -33,10 +33,8 @@ class KeycloakGuard implements Guard
 
     /**
      * Decode token, validate and authenticate user
-     *
-     * @return mixed
      */
-    private function authenticate()
+    private function authenticate(): void
     {
         try {
             $this->decodedToken = Token::decode(
@@ -50,9 +48,7 @@ class KeycloakGuard implements Guard
         }
 
         if ($this->decodedToken) {
-            $this->validate([
-                $this->config['user_provider_credential'] => $this->decodedToken->{$this->config['token_principal_attribute']}
-            ]);
+            $this->validate([$this->config['user_provider_credential'] => $this->getClientName()]);
         }
     }
 
@@ -61,7 +57,7 @@ class KeycloakGuard implements Guard
      *
      * @return string
      */
-    public function getTokenForRequest()
+    public function getTokenForRequest(): string
     {
         $inputKey = $this->config['input_key'] ?? '';
 
@@ -80,20 +76,16 @@ class KeycloakGuard implements Guard
 
     /**
      * Determine if the guard has a user instance.
-     *
-     * @return bool
      */
-    public function hasUser()
+    public function hasUser(): bool
     {
         return !is_null($this->user());
     }
 
     /**
      * Determine if the current user is a guest.
-     *
-     * @return bool
      */
-    public function guest()
+    public function guest(): bool
     {
         return !$this->check();
     }
@@ -101,18 +93,20 @@ class KeycloakGuard implements Guard
     /**
      * Set the current user.
      *
-     * @param  \Illuminate\Contracts\Auth\Authenticatable  $user
-     * @return void
+     * @param Authenticatable $user
+     * @return KeycloakGuard
      */
-    public function setUser(Authenticatable $user)
+    public function setUser(Authenticatable $user): self
     {
         $this->user = $user;
+
+        return $this;
     }
 
     /**
      * Get the currently authenticated user.
      *
-     * @return \Illuminate\Contracts\Auth\Authenticatable|null
+     * @return Authenticatable|null
      */
     public function user()
     {
@@ -135,8 +129,10 @@ class KeycloakGuard implements Guard
     public function id()
     {
         if ($user = $this->user()) {
-            return $this->user()->id;
+            return $user?->id;
         }
+
+        return null;
     }
 
     /**
@@ -181,18 +177,15 @@ class KeycloakGuard implements Guard
 
     /**
      * Validate if authenticated user has a valid resource
-     *
-     * @return void
      */
-    private function validateResources()
+    private function validateResources(): void
     {
         if ($this->config['ignore_resources_validation']) {
             return;
         }
 
-        $client_name = $this->decodedToken->{$this->config['token_principal_attribute']};
         $token_resource_access = Arr::get(
-            (array) ($this->decodedToken->resource_access->{$client_name} ?? []),
+            (array) ($this->decodedToken->resource_access->{$this->$this->getClientName()} ?? []),
             'roles',
             []
         );
@@ -207,8 +200,7 @@ class KeycloakGuard implements Guard
     public function roles(bool $useGlobal = true): array
     {
         $global_roles = [];
-        $client_name = $this->decodedToken->{$this->config['token_principal_attribute']};
-        $client_roles = $this->decodedToken?->resource_access?->{$client_name}?->roles ?? [];
+        $client_roles = $this->decodedToken?->resource_access?->{$this->getClientName()}?->roles ?? [];
 
         if($useGlobal) {
             $global_roles = $this->decodedToken?->realm_access?->roles ?? [];
@@ -260,37 +252,11 @@ class KeycloakGuard implements Guard
 
     public function getRoles(): array
     {
-        $name = $this->getClientName();
-
-        if (empty($this->decodedToken->{$name}->roles)) {
-            return [];
-        }
-
-        return $this->decodedToken->{$name}->roles;
-    }
-
-    public function getResourceAccess(): array
-    {
-        $name = $this->getClientName();
-
-        if (empty($this->decodedToken->resource_acces->{$name}->roles)) {
-            return [];
-        }
-
-        return $this->decodedToken->resource_acces->{$name}->roles;
-    }
-
-    public function getRealmAccess(): array
-    {
-        if (empty($this->decodedToken->realm_access->roles)) {
-            return [];
-        }
-
-        return $this->decodedToken->realm_access->roles;
+        return $this->roles(false);
     }
 
     private function getClientName(): string|null
     {
-        return $this->decodedToken->aud ?? $this->decodedToken->azp ?? null;
+        return $this->decodedToken->{$this->config['token_principal_attribute']};
     }
 }
