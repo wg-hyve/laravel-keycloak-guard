@@ -38,11 +38,6 @@ class KeycloakGuard implements Guard
      */
     private function authenticate()
     {
-        // check we have a pub key or realm address
-        if (empty($this->config['realm_public_key']) && empty($this->config['realm_address'])) {
-            abrout(404, "No public key found");
-        }
-
         try {
             $this->decodedToken = Token::decode(
                 $this->getTokenForRequest(),
@@ -55,9 +50,9 @@ class KeycloakGuard implements Guard
         }
 
         if ($this->decodedToken) {
-            $this->validate(
-                [$this->config['user_provider_credential'] => $this->decodedToken->{$this->config['token_principal_attribute']}]
-            );
+            $this->validate([
+                $this->config['user_provider_credential'] => $this->decodedToken->{$this->config['token_principal_attribute']}
+            ]);
         }
     }
 
@@ -146,8 +141,6 @@ class KeycloakGuard implements Guard
 
     /**
      * Returns full decoded JWT token from authenticated user
-     *
-     * @return stdClass|null
      */
     public function token(): ?stdClass
     {
@@ -197,9 +190,16 @@ class KeycloakGuard implements Guard
             return;
         }
 
+        $client_name = $this->decodedToken->{$this->config['token_principal_attribute']};
+        $token_resource_access = Arr::get(
+            (array) ($this->decodedToken->resource_access->{$client_name} ?? []),
+            'roles',
+            []
+        );
+
         $allowed_resources = explode(',', $this->config['allowed_resources']);
 
-        if (count(array_intersect($this->roles(), $allowed_resources)) == 0) {
+        if (count(array_intersect($token_resource_access, $allowed_resources)) == 0) {
             throw new ResourceAccessNotAllowedException("The decoded JWT token has not a valid `resource_access` allowed by API. Allowed resources by API: ".$this->config['allowed_resources']);
         }
     }
@@ -239,9 +239,23 @@ class KeycloakGuard implements Guard
             ) > 0;
     }
 
-    public function getAllRules(): array
+    public function scopes(): array
     {
-        return array_merge($this->getRealmAccess(), $this->getRoles(), $this->getResourceAccess(), $this->scopes());
+        $scopes = $this->decodedToken->scope ?? null;
+
+        if($scopes) {
+            return explode(' ', $scopes);
+        }
+
+        return [];
+    }
+
+    public function hasScope(string|array $scope): bool
+    {
+        return count(array_intersect(
+            $this->scopes(),
+            is_string($scope) ? [$scope] : $scope
+        )) > 0;
     }
 
     public function getRoles(): array
@@ -273,25 +287,6 @@ class KeycloakGuard implements Guard
         }
 
         return $this->decodedToken->realm_access->roles;
-    }
-
-    public function scopes(): array
-    {
-        $scopes = $this->decodedToken->scope ?? null;
-
-        if($scopes) {
-            return explode(' ', $scopes);
-        }
-
-        return [];
-    }
-
-    public function hasScope(string|array $scope): bool
-    {
-        return count(array_intersect(
-                         $this->scopes(),
-                         is_string($scope) ? [$scope] : $scope
-                     )) > 0;
     }
 
     private function getClientName(): string|null
