@@ -185,7 +185,7 @@ class KeycloakGuard implements Guard
         }
 
         $token_resource_access = Arr::get(
-            (array) ($this->decodedToken->resource_access->{$this->$this->getClientName()} ?? []),
+            (array) ($this->decodedToken->resource_access->{$this->getClientName()} ?? []),
             'roles',
             []
         );
