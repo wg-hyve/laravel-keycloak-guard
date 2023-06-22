@@ -61,7 +61,7 @@ class KeycloakGuard implements Guard
     {
         $inputKey = $this->config['input_key'] ?? '';
 
-        return $this->request->bearerToken() ?? $this->request->input($inputKey) ?? Arr::get(getallheaders(), 'Authorization');
+        return str_replace('Bearer ', '', $this->request->bearerToken() ?? $this->request->input($inputKey) ?? Arr::get(getallheaders(), 'Authorization'));
     }
 
     /**
