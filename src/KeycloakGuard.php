@@ -33,16 +33,9 @@ class KeycloakGuard implements Guard
 
     /**
      * Decode token, validate and authenticate user
-     *
-     * @return mixed
      */
-    private function authenticate()
+    private function authenticate(): void
     {
-        // check we have a pub key or realm address
-        if (empty($this->config['realm_public_key']) && empty($this->config['realm_address'])) {
-            abrout(404, "No public key found");
-        }
-
         try {
             $this->decodedToken = Token::decode(
                 $this->getTokenForRequest(),
@@ -55,9 +48,7 @@ class KeycloakGuard implements Guard
         }
 
         if ($this->decodedToken) {
-            $this->validate(
-                [$this->config['user_provider_credential'] => $this->decodedToken->{$this->config['token_principal_attribute']}]
-            );
+            $this->validate([$this->config['user_provider_credential'] => $this->getClientName()]);
         }
     }
 
@@ -66,11 +57,11 @@ class KeycloakGuard implements Guard
      *
      * @return string
      */
-    public function getTokenForRequest()
+    public function getTokenForRequest(): string
     {
         $inputKey = $this->config['input_key'] ?? '';
 
-        return $this->request->bearerToken() ?? $this->request->input($inputKey) ?? Arr::get(getallheaders(), 'Authorization');
+        return str_replace('Bearer ', '', $this->request->bearerToken() ?? $this->request->input($inputKey) ?? Arr::get(getallheaders(), 'Authorization'));
     }
 
     /**
@@ -85,20 +76,16 @@ class KeycloakGuard implements Guard
 
     /**
      * Determine if the guard has a user instance.
-     *
-     * @return bool
      */
-    public function hasUser()
+    public function hasUser(): bool
     {
         return !is_null($this->user());
     }
 
     /**
      * Determine if the current user is a guest.
-     *
-     * @return bool
      */
-    public function guest()
+    public function guest(): bool
     {
         return !$this->check();
     }
@@ -106,18 +93,20 @@ class KeycloakGuard implements Guard
     /**
      * Set the current user.
      *
-     * @param  \Illuminate\Contracts\Auth\Authenticatable  $user
-     * @return void
+     * @param Authenticatable $user
+     * @return KeycloakGuard
      */
-    public function setUser(Authenticatable $user)
+    public function setUser(Authenticatable $user): self
     {
         $this->user = $user;
+
+        return $this;
     }
 
     /**
      * Get the currently authenticated user.
      *
-     * @return \Illuminate\Contracts\Auth\Authenticatable|null
+     * @return Authenticatable|null
      */
     public function user()
     {
@@ -140,14 +129,14 @@ class KeycloakGuard implements Guard
     public function id()
     {
         if ($user = $this->user()) {
-            return $this->user()->id;
+            return $user?->id;
         }
+
+        return null;
     }
 
     /**
      * Returns full decoded JWT token from authenticated user
-     *
-     * @return stdClass|null
      */
     public function token(): ?stdClass
     {
@@ -188,18 +177,22 @@ class KeycloakGuard implements Guard
 
     /**
      * Validate if authenticated user has a valid resource
-     *
-     * @return void
      */
-    private function validateResources()
+    private function validateResources(): void
     {
         if ($this->config['ignore_resources_validation']) {
             return;
         }
 
+        $token_resource_access = Arr::get(
+            (array) ($this->decodedToken->resource_access->{$this->getClientName()} ?? []),
+            'roles',
+            []
+        );
+
         $allowed_resources = explode(',', $this->config['allowed_resources']);
 
-        if (count(array_intersect($this->roles(), $allowed_resources)) == 0) {
+        if (count(array_intersect($token_resource_access, $allowed_resources)) == 0) {
             throw new ResourceAccessNotAllowedException("The decoded JWT token has not a valid `resource_access` allowed by API. Allowed resources by API: ".$this->config['allowed_resources']);
         }
     }
@@ -207,8 +200,7 @@ class KeycloakGuard implements Guard
     public function roles(bool $useGlobal = true): array
     {
         $global_roles = [];
-        $client_name = $this->decodedToken->{$this->config['token_principal_attribute']};
-        $client_roles = $this->decodedToken?->resource_access?->{$client_name}?->roles ?? [];
+        $client_roles = $this->decodedToken?->resource_access?->{$this->getClientName()}?->roles ?? [];
 
         if($useGlobal) {
             $global_roles = $this->decodedToken?->realm_access?->roles ?? [];
@@ -239,42 +231,6 @@ class KeycloakGuard implements Guard
             ) > 0;
     }
 
-    public function getAllRules(): array
-    {
-        return array_merge($this->getRealmAccess(), $this->getRoles(), $this->getResourceAccess(), $this->scopes());
-    }
-
-    public function getRoles(): array
-    {
-        $name = $this->getClientName();
-
-        if (empty($this->decodedToken->{$name}->roles)) {
-            return [];
-        }
-
-        return $this->decodedToken->{$name}->roles;
-    }
-
-    public function getResourceAccess(): array
-    {
-        $name = $this->getClientName();
-
-        if (empty($this->decodedToken->resource_acces->{$name}->roles)) {
-            return [];
-        }
-
-        return $this->decodedToken->resource_acces->{$name}->roles;
-    }
-
-    public function getRealmAccess(): array
-    {
-        if (empty($this->decodedToken->realm_access->roles)) {
-            return [];
-        }
-
-        return $this->decodedToken->realm_access->roles;
-    }
-
     public function scopes(): array
     {
         $scopes = $this->decodedToken->scope ?? null;
@@ -289,13 +245,18 @@ class KeycloakGuard implements Guard
     public function hasScope(string|array $scope): bool
     {
         return count(array_intersect(
-                         $this->scopes(),
-                         is_string($scope) ? [$scope] : $scope
-                     )) > 0;
+            $this->scopes(),
+            is_string($scope) ? [$scope] : $scope
+        )) > 0;
+    }
+
+    public function getRoles(): array
+    {
+        return $this->roles(false);
     }
 
     private function getClientName(): string|null
     {
-        return $this->decodedToken->aud ?? $this->decodedToken->azp ?? null;
+        return $this->decodedToken->{$this->config['token_principal_attribute']};
     }
 }
